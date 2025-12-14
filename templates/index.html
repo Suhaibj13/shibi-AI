@@ -33,8 +33,24 @@
     <main class="main">
       <!-- Top bar -->
       <header class="topbar">
+        <!-- LEFT arrow: opens sidebar on mobile -->
+        <button id="mobile-open-left"
+                class="topbar-icon mobile-only"
+                aria-label="Open navigation">
+          ←
+        </button>
+
         <div class="status" id="status">Ready</div>
+
         <div class="topbar-spacer"></div>
+
+        <!-- RIGHT arrow: opens file vault on mobile -->
+        <button id="mobile-open-right"
+                class="topbar-icon mobile-only"
+                aria-label="Open file vault">
+          →
+        </button>
+
         <button id="theme-toggle" class="icon-btn" title="Toggle theme" aria-label="Toggle theme">
           <span id="theme-icon" aria-hidden="true">🌙</span>
         </button>
@@ -92,6 +108,8 @@
     </div>
   </div>
   </div>
+  <!-- Mobile dim background when side panels are open -->
+  <div id="mobile-overlay"></div>
 
   
   
