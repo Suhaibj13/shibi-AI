@@ -1993,3 +1993,72 @@ body {
     display: none;
   }
 }
+
+/* === GAIA mobile: top-bar arrows + overlay + slide panels === */
+
+/* Arrow buttons (only visible on mobile) */
+.topbar-icon{
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: var(--panel);
+  color: var(--text);
+  cursor: pointer;
+  margin-right: 8px;
+  font-size: 18px;
+}
+.topbar-icon:active{
+  transform: scale(.96);
+}
+
+/* helper to show elements only on mobile */
+.mobile-only{
+  display: none;
+}
+
+/* dark backdrop when nav / vault is open */
+#mobile-overlay{
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,.45);
+  z-index: 20;     /* above chat, below side panels */
+}
+#mobile-overlay.is-visible{
+  display: block;
+}
+
+@media (max-width: 900px){
+  /* show arrow buttons only on mobile */
+  .mobile-only{
+    display: inline-flex;
+  }
+
+  /* Sidebar becomes a slide-in drawer instead of being hidden */
+  .sidebar{
+    display: flex;               /* override earlier display:none */
+    position: fixed;
+    top: 0;
+    left: 0;
+    bottom: 0;
+    width: 80%;
+    max-width: 320px;
+    transform: translateX(-100%);   /* hidden by default */
+    transition: transform .22s ease-out;
+    z-index: 50;
+  }
+
+  .sidebar.mobile-open{
+    transform: translateX(0);       /* slide in */
+  }
+
+  /* Chat column uses full screen height under the top bar */
+  .chat-column{
+    height: calc(100vh - 48px);
+  }
+}
+
