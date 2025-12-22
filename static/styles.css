@@ -2062,3 +2062,39 @@ body {
   }
 }
 
+/* === FIX: Dynamic Attachment Vault sizing (no sudden hide / off-canvas) === */
+:root{
+  /* tweak these 3 numbers if you want: min | fluid | max */
+  --vault-w-responsive: clamp(180px, 22vw, 360px);
+}
+
+/* Keep vault as a right-rail and resize it with the window */
+@media (min-width: 520px){
+  #attachment-vault,
+  .vault-panel{
+    position: fixed;
+    top: var(--toolbar-h, 56px);
+    right: 0;
+
+    width: var(--vault-w-responsive);
+    height: calc(100dvh - var(--toolbar-h, 56px));
+
+    overflow: auto;
+
+    /* override the “slide away” + “hide” behaviors */
+    transform: none !important;
+    display: block !important;
+
+    /* keep theme-consistent */
+    background: var(--panel);
+    color: var(--text);
+    border-left: 1px solid rgba(0,0,0,.06);
+    z-index: 30;
+  }
+
+  /* make chat/composer shrink so vault never overlaps */
+  .chat-column{
+    padding-right: var(--vault-w-responsive);
+  }
+}
+
