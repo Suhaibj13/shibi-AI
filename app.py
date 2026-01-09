@@ -1,12 +1,9 @@
 # main.py (drop-in /ask)
-from flask import Flask, render_template, request, jsonify
+from flask import Flask, render_template, request, jsonify, Response, stream_with_context
 from dotenv import load_dotenv
-import os
+import os, json, time, logging
 from models import resolve  # GAIA V5 model resolver
 from file_ai_router import route_and_answer
-from flask import jsonify
-from flask import Response, stream_with_context, request
-import json, time
 
 def safe_json(obj, status=200):
     return jsonify(obj), status
@@ -15,13 +12,24 @@ import logging
 log = logging.getLogger(__name__)
 
 load_dotenv()
+
 app = Flask(__name__, static_url_path="/static", static_folder="static", template_folder="templates")
 
-import config
-app.secret_key = config.SECRET_KEY
+# secret key AFTER app is created (and safe if config/env missing)
+try:
+    import config
+    app.secret_key = getattr(config, "SECRET_KEY", None) or os.environ.get("SECRET_KEY", "dev-secret")
+except Exception:
+    app.secret_key = os.environ.get("SECRET_KEY", "dev-secret")
 
 #from providers import gemini_provider, groq_provider
-from providers import gemini_provider, groq_provider, openai_provider, anthropic_provider, cohere_provider
+#from providers import gemini_provider, groq_provider, openai_provider, anthropic_provider, cohere_provider
+from providers import gemini_provider, groq_provider
+try:
+    from providers import openai_provider, anthropic_provider, cohere_provider
+except Exception as e:
+    openai_provider = anthropic_provider = cohere_provider = None
+    log.warning("Optional providers disabled: %s", e)
 import math, json  # make sure json is imported too
 
 FOLLOWUP_WORDS = {"explain", "elaborate", "more", "clarify", "details", "expand", "why"}
@@ -314,6 +322,5 @@ def ask_stream():
 
 
 if __name__ == "__main__":
-    import os
     port = int(os.environ.get("PORT", "8080"))
     app.run(host="0.0.0.0", port=port, debug=False)
