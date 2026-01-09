@@ -2081,9 +2081,9 @@ body {
 
     overflow: auto;
 
-    /* override the “slide away” + “hide” behaviors */
-    transform: none !important;
-    display: block !important;
+    /* ✅ allow collapse */
+    transform: translateX(0);
+    transition: transform .3s ease;
 
     /* keep theme-consistent */
     background: var(--panel);
@@ -2098,3 +2098,1007 @@ body {
   }
 }
 
+/* === Vault Viewer Modal === */
+.vault-viewer-backdrop{
+  position: fixed;
+  inset: 0;
+  display: none;
+  align-items: flex-start;
+  justify-content: center;
+  padding: 72px 16px 24px;
+  background: rgba(0,0,0,.35);
+  backdrop-filter: blur(6px);
+  z-index: 999;
+}
+.vault-viewer-backdrop.is-open{ display: flex; }
+
+.vault-viewer{
+  width: min(980px, 92vw);
+  max-height: 78vh;
+  display: flex;
+  flex-direction: column;
+
+  background: rgba(20, 24, 38, .72);
+  border: 1px solid rgba(255,255,255,.10);
+  border-radius: 14px;
+  box-shadow: 0 20px 60px rgba(0,0,0,.35);
+  overflow: hidden;
+}
+
+.vault-viewer-header{
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 14px;
+  border-bottom: 1px solid rgba(255,255,255,.10);
+}
+
+.vault-viewer-title{
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+#vaultViewerName{
+  font-weight: 700;
+  color: rgba(255,255,255,.95);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.vault-viewer-meta{
+  font-size: 12px;
+  color: rgba(255,255,255,.65);
+}
+
+.vault-viewer-actions{
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.vault-btn{
+  appearance: none;
+  border: 1px solid rgba(255,255,255,.14);
+  background: rgba(255,255,255,.06);
+  color: rgba(255,255,255,.92);
+  padding: 8px 10px;
+  border-radius: 10px;
+  cursor: pointer;
+  font-weight: 600;
+  font-size: 13px;
+}
+.vault-btn:hover{ background: rgba(255,255,255,.10); }
+.vault-btn-x{ padding: 8px 10px; }
+
+.vault-viewer-body{
+  padding: 14px;
+  overflow: auto;
+}
+
+.vault-viewer-pre{
+  margin: 0;
+  white-space: pre-wrap;
+  word-break: break-word;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+  font-size: 13px;
+  line-height: 1.45;
+  color: rgba(255,255,255,.92);
+}
+
+.vault-viewer-fallback{
+  color: rgba(255,255,255,.8);
+  font-size: 13px;
+}
+
+/* === Vault row actions (Attach / Download / Delete) === */
+.vault-actions{
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin-left: 10px;
+}
+.vault-icon-btn{
+  border: 0;
+  background: transparent;
+  color: rgba(255,255,255,.80);
+  cursor: pointer;
+  padding: 4px 6px;
+  border-radius: 8px;
+  line-height: 1;
+}
+.vault-icon-btn:hover{
+  background: rgba(255,255,255,.08);
+  color: rgba(255,255,255,.95);
+}
+
+/* =========================================================
+   GAIA — Vault UI polish (append-only overrides)
+   Makes the Attachment Vault look like an integrated panel
+   + nicer rows + proper action buttons (Attach/Download/Delete)
+   ========================================================= */
+
+/* Vault theme tokens (light + dark) */
+:root{
+  --vault-radius: 14px;
+  --vault-pad: 10px;
+
+  --vault-bg: rgba(255,255,255,.78);
+  --vault-border: rgba(17,24,39,.10);
+  --vault-shadow: 0 14px 34px rgba(17,24,39,.10);
+
+  --vault-item-bg: rgba(17,24,39,.035);
+  --vault-item-border: rgba(17,24,39,.06);
+  --vault-item-hover: rgba(16,163,127,.10);
+
+  --vault-icon-bg: rgba(17,24,39,.06);
+
+  --vault-btn-bg: rgba(17,24,39,.05);
+  --vault-btn-bd: rgba(17,24,39,.10);
+  --vault-btn-hv: rgba(17,24,39,.09);
+
+  --vault-green: #10a37f;
+  --vault-blue:  #0ea5e9;
+  --vault-red:   #e5484d;
+}
+
+[data-theme="dark"]{
+  --vault-bg: rgba(17,24,39,.70);
+  --vault-border: rgba(255,255,255,.10);
+  --vault-shadow: 0 16px 40px rgba(0,0,0,.55);
+
+  --vault-item-bg: rgba(255,255,255,.06);
+  --vault-item-border: rgba(255,255,255,.10);
+  --vault-item-hover: rgba(16,163,127,.16);
+
+  --vault-icon-bg: rgba(255,255,255,.08);
+
+  --vault-btn-bg: rgba(255,255,255,.06);
+  --vault-btn-bd: rgba(255,255,255,.12);
+  --vault-btn-hv: rgba(255,255,255,.10);
+}
+
+/* Integrated “right rail” look */
+#attachment-vault,
+.vault-panel{
+  border-radius: var(--vault-radius) !important;
+  border-left: 0 !important;                 /* remove the “separate strip” feel */
+  border: 1px solid var(--vault-border) !important;
+  background: var(--vault-bg) !important;
+  box-shadow: var(--vault-shadow) !important;
+  backdrop-filter: saturate(120%) blur(10px);
+  -webkit-backdrop-filter: saturate(120%) blur(10px);
+  padding: var(--vault-pad) !important;
+}
+
+/* Header: slightly sticky, cleaner */
+.vault-head{
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  padding: 6px 6px 8px;
+  margin: -2px -2px 6px;
+  background: linear-gradient(to bottom,
+    rgba(255,255,255,.70),
+    rgba(255,255,255,0)
+  );
+  border-radius: 12px;
+}
+[data-theme="dark"] .vault-head{
+  background: linear-gradient(to bottom,
+    rgba(17,24,39,.75),
+    rgba(17,24,39,0)
+  );
+}
+
+.vault-title{ font-weight: 700; letter-spacing: .2px; }
+
+/* Row polish */
+.v-item{
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 8px;
+  border-radius: 12px;
+  background: var(--vault-item-bg) !important;
+  border: 1px solid var(--vault-item-border);
+  transition: transform .12s ease, background .16s ease, border-color .16s ease, box-shadow .16s ease;
+}
+
+.v-item:hover{
+  background: var(--vault-item-hover) !important;
+  border-color: rgba(16,163,127,.22);
+  box-shadow: 0 10px 22px rgba(17,24,39,.08);
+  transform: translateY(-1px);
+}
+
+@media (prefers-reduced-motion: reduce){
+  .v-item{ transition: none; }
+  .v-item:hover{ transform: none; }
+}
+
+/* Icon chip */
+.v-ico{
+  width: 26px;
+  height: 26px;
+  border-radius: 10px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--vault-icon-bg);
+  border: 1px solid var(--vault-item-border);
+  flex: 0 0 26px;
+}
+
+/* Filename as a clean button (for preview-open) */
+.v-name{
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+
+  background: transparent;
+  border: 0;
+  padding: 0;
+  margin: 0;
+
+  text-align: left;
+  cursor: pointer;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.v-name:hover{ text-decoration: underline; text-decoration-color: rgba(16,163,127,.55); }
+
+.v-size{
+  font-size: 11px;
+  opacity: .72;
+  flex: 0 0 auto;
+}
+
+/* Actions (Attach / Download / Delete) */
+.v-actions{
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  flex: 0 0 auto;
+}
+
+/* Base button */
+.v-actions .v-btn{
+  width: 28px;
+  height: 28px;
+  border-radius: 10px;
+  border: 1px solid var(--vault-btn-bd);
+  background: var(--vault-btn-bg);
+  color: var(--muted);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+  transition: transform .10s ease, background .14s ease, border-color .14s ease, color .14s ease;
+}
+
+.v-actions .v-btn:hover{
+  background: var(--vault-btn-hv);
+  color: var(--text);
+  transform: translateY(-1px);
+}
+.v-actions .v-btn:active{ transform: translateY(0); }
+
+/* Subtle semantic hinting by class */
+.v-actions .v-attach:hover{ border-color: rgba(16,163,127,.35); color: var(--vault-green); }
+.v-actions .v-dl:hover{     border-color: rgba(14,165,233,.35);  color: var(--vault-blue);  }
+.v-actions .v-del:hover{    border-color: rgba(229,72,77,.40);   color: var(--vault-red);   }
+
+/* On touch devices, keep actions fully visible */
+@media (hover: none){
+  .v-actions .v-btn{ background: var(--vault-btn-bg); }
+}
+
+/* -------- Viewer modal: light-mode readability polish -------- */
+[data-theme="light"] .vault-viewer{
+  background: rgba(255,255,255,.82);
+  border: 1px solid rgba(17,24,39,.10);
+  box-shadow: 0 22px 70px rgba(17,24,39,.18);
+}
+[data-theme="light"] #vaultViewerName{ color: rgba(17,24,39,.92); }
+[data-theme="light"] .vault-viewer-meta{ color: rgba(17,24,39,.60); }
+[data-theme="light"] .vault-viewer-pre{ color: rgba(17,24,39,.92); }
+[data-theme="light"] .vault-btn{
+  background: rgba(17,24,39,.04);
+  border-color: rgba(17,24,39,.10);
+  color: rgba(17,24,39,.88);
+}
+[data-theme="light"] .vault-btn:hover{ background: rgba(17,24,39,.07); }
+
+
+/* =========================================================
+   Sidebar Toggle Buttons
+   ========================================================= */
+.nav-toggle-btn {
+  position: absolute;
+  top: 10px;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  border: 1px solid rgba(17,24,39,.10);
+  background: rgba(255,255,255,.7);
+  box-shadow: 0 2px 10px rgba(0,0,0,.08);
+  color: rgba(17,24,39,.8);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 16px;
+  z-index: 99;
+  transition: all 0.25s ease;
+}
+
+[data-theme="dark"] .nav-toggle-btn {
+  background: rgba(17,24,39,.7);
+  color: rgba(255,255,255,.8);
+  border-color: rgba(255,255,255,.15);
+}
+
+/* Placement */
+#toggle-left-nav { right: -14px; }
+#toggle-vault { left: -14px; }
+
+/* Hover/active */
+.nav-toggle-btn:hover {
+  transform: scale(1.05);
+  background: rgba(255,255,255,.9);
+}
+[data-theme="dark"] .nav-toggle-btn:hover {
+  background: rgba(255,255,255,.1);
+}
+
+/* Collapsed states */
+body.left-collapsed #left-nav {
+  transform: translateX(-100%);
+  transition: transform .3s ease;
+}
+body.vault-collapsed #attachment-vault {
+  transform: translateX(100%);
+  transition: transform .3s ease;
+}
+
+/* Optional: shift main chat area when sidebars close/open */
+.chat-column {
+  transition: padding .3s ease;
+}
+body.vault-collapsed .chat-column {
+  padding-right: 0 !important;
+}
+body.left-collapsed .chat-column {
+  padding-left: 0 !important;
+}
+body.vault-collapsed #vault-panel{
+  transform: translateX(100%);
+  transition: transform .3s ease;
+}
+
+/* === Bigger centered oval toggle buttons (left nav + vault) === */
+.nav-toggle-btn{
+  top: 50%;
+  width: 58px;
+  height: 36px;
+  border-radius: 999px;
+  font-size: 18px;
+
+  /* keep it vertically centered */
+  transform: translateY(-50%);
+
+  /* nicer look */
+  backdrop-filter: blur(8px);
+  box-shadow: 0 10px 26px rgba(0,0,0,12);
+}
+
+/* placement at the center edge of each rail */
+#toggle-left-nav{ right: -30px; }
+#toggle-vault{ left: -30px; }
+
+/* keep hover/active while preserving translateY */
+.nav-toggle-btn:hover{
+  transform: translateY(-50%) scale(1.05);
+}
+.nav-toggle-btn:active{
+  transform: translateY(-50%) scale(.98);
+}
+
+/* ===== GAIA: Always-clickable side toggles (egg handle) ===== */
+:root{
+  /* how much of the panel remains visible when collapsed (keeps the handle clickable) */
+  --nav-handle-peek: 22px;
+
+  /* egg size */
+  --nav-handle-w: 36px;
+  --nav-handle-h: 68px;
+}
+
+/* Bigger “standing egg” toggle, vertically centered */
+.nav-toggle-btn{
+  top: 50% !important;
+  transform: translateY(-50%) !important;
+
+  width: var(--nav-handle-w) !important;
+  height: var(--nav-handle-h) !important;
+  border-radius: 999px !important;
+
+  z-index: 2500 !important;             /* above chat */
+  box-shadow: 0 10px 26px rgba(0,0,0,.18);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+}
+
+/* Keep translateY on hover/active (your current hover overrides transform) */
+.nav-toggle-btn:hover{
+  transform: translateY(-50%) scale(1.06) !important;
+}
+.nav-toggle-btn:active{
+  transform: translateY(-50%) scale(0.98) !important;
+}
+
+/* Position: centered on the bar edge */
+#toggle-left-nav{
+  right: calc(var(--nav-handle-w) / -2) !important;
+}
+#toggle-vault{
+  left: calc(var(--nav-handle-w) / -2) !important;
+}
+
+/* Ensure panels sit above chat so handle never gets covered */
+#left-nav,
+#attachment-vault,
+#vault-panel,
+.vault-panel{
+  z-index: 1800 !important;
+}
+
+/* Collapsed = leave a thin strip visible so the handle stays on-screen */
+body.left-collapsed #left-nav{
+  transform: translateX(calc(-100% + var(--nav-handle-peek))) !important;
+}
+
+body.vault-collapsed #attachment-vault,
+body.vault-collapsed #vault-panel,
+body.vault-collapsed .vault-panel{
+  transform: translateX(calc(100% - var(--nav-handle-peek))) !important;
+}
+
+/* Allow side toggle buttons to be visible */
+.sidebar,
+.vault-panel,
+#vault-panel,
+.chat-column {
+  overflow: visible !important;
+}
+
+/* === ChatGPT-style minimize (NOT hide) === */
+
+/* default vault width (already set via --vault-w) */
+.vault-panel{
+  transition: width .22s ease, padding .22s ease;
+}
+
+/* when collapsed, keep a slim rail visible */
+body.vault-collapsed .vault-panel{
+  width: 48px !important;          /* slim rail like ChatGPT */
+  padding-left: 0;
+  padding-right: 0;
+  overflow: visible !important;
+}
+
+/* hide vault contents, keep toggle */
+body.vault-collapsed .vault-head,
+body.vault-collapsed .vault-list{
+  opacity: 0;
+  pointer-events: none;
+}
+
+/* ================================
+   ChatGPT-style rail toggles + minimize rails
+   (MINIMAL OVERRIDES — append at end)
+================================== */
+
+:root{
+  --side-peek: 64px;   /* minimized left rail width */
+  --vault-peek: 56px;  /* minimized right rail visible strip */
+}
+
+/* Make sure toggles can "hang outside" panels without being clipped */
+.sidebar{ position: relative; overflow: visible; }
+.vault-panel{ overflow: visible; z-index: 60; }
+
+/* Keep vault list scrollable while panel itself stays overflow-visible */
+.vault-panel{ display: flex; flex-direction: column; }
+.vault-panel .vault-list{ flex: 1 1 auto; min-height: 0; overflow: auto; }
+
+/* ===== Toggle button (ChatGPT-like handle) ===== */
+.nav-toggle-btn{
+  position: absolute;
+  top: 74px;                 /* similar to ChatGPT */
+  width: 34px;               /* bigger */
+  height: 64px;              /* bigger */
+  border-radius: 999px;
+  border: 1px solid rgba(0,0,0,.12);
+  background: rgba(255,255,255,.92);
+  backdrop-filter: blur(10px);
+  box-shadow: 0 10px 22px rgba(0,0,0,.14);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  z-index: 9999;             /* ALWAYS above chat */
+  font-size: 18px;
+  line-height: 1;
+  transition: transform .12s ease, box-shadow .12s ease, background .12s ease;
+}
+.nav-toggle-btn:hover{ transform: translateY(-1px); box-shadow: 0 12px 26px rgba(0,0,0,.18); }
+.nav-toggle-btn:active{ transform: translateY(0); }
+
+[data-theme="dark"] .nav-toggle-btn{
+  background: rgba(17,24,39,.88);
+  border: 1px solid rgba(255,255,255,.14);
+  box-shadow: 0 14px 28px rgba(0,0,0,.45);
+  color: var(--text);
+}
+
+/* Left toggle sits on the right edge of sidebar */
+#toggle-left-nav{ right: -17px; }
+
+/* Vault toggle sits on the left edge of vault */
+.vault-panel #toggle-vault{ left: -17px; }
+
+/* ===== Desktop: vault width uses JS-driven --vault-w (dynamic) ===== */
+@media (min-width: 769px){
+  .vault-panel{
+    width: clamp(240px, var(--vault-w, 320px), 420px);
+    transition: transform .18s ease, width .18s ease;
+  }
+
+  /* Reserve space for vault so chat never covers it */
+  .chat-column{
+    padding-right: clamp(240px, var(--vault-w, 320px), 420px);
+    transition: padding-right .18s ease;
+  }
+
+  /* ===== Vault minimized (NOT disappear) ===== */
+  body.vault-collapsed .vault-panel{
+    transform: translateX(calc(100% - var(--vault-peek)));
+    box-shadow: none;
+  }
+  body.vault-collapsed .chat-column{
+    padding-right: var(--vault-peek);
+  }
+
+  /* Optional: hide vault contents while minimized (keeps it clean like ChatGPT) */
+  body.vault-collapsed .vault-panel .vault-head,
+  body.vault-collapsed .vault-panel .vault-list{
+    opacity: 0;
+    pointer-events: none;
+  }
+}
+
+/* ===== Desktop: sidebar minimized (NOT disappear) ===== */
+@media (min-width: 901px){
+  body.sidebar-collapsed .shell{
+    grid-template-columns: var(--side-peek) minmax(0, 1fr);
+  }
+
+  body.sidebar-collapsed .sidebar{
+    padding: 12px 10px;
+  }
+
+  /* Hide bulk content, keep it as a thin rail */
+  body.sidebar-collapsed .sidebar .brand-title,
+  body.sidebar-collapsed .sidebar .brand-sub,
+  body.sidebar-collapsed .sidebar .side-actions,
+  body.sidebar-collapsed .sidebar #chat-list{
+    display: none !important;
+  }
+
+  body.sidebar-collapsed .sidebar .brand{
+    justify-content: center;
+  }
+}
+
+/* =========================================================
+   PATCH A — Vault row actions: remove boxes (save space)
+   ========================================================= */
+.v-actions { gap: 4px !important; }
+
+.v-actions .v-btn{
+  width: 22px !important;
+  height: 22px !important;
+  border: 0 !important;
+  background: transparent !important;
+  border-radius: 8px !important;
+  box-shadow: none !important;
+  transform: none !important;
+}
+
+/* subtle hover only (no “boxy” border) */
+.v-actions .v-btn:hover{
+  background: rgba(0,0,0,.06) !important;
+  color: var(--text) !important;
+}
+[data-theme="dark"] .v-actions .v-btn:hover{
+  background: rgba(255,255,255,.08) !important;
+}
+
+/* ensure filename always gets max space */
+.v-item .v-name{
+  flex: 1 1 auto !important;
+  min-width: 0 !important;
+}
+
+
+/* ========= ChatGPT-style collapsed sidebar (mini rail) ========= */
+@media (min-width: 901px){
+
+  body.left-mini .shell {
+    grid-template-columns: 64px minmax(0,1fr);
+  }
+
+  body.left-mini .sidebar {
+    padding: 12px 8px;
+  }
+
+  /* Hide text + sections when collapsed */
+  body.left-mini .sidebar .brand-title,
+  body.left-mini .sidebar .brand-sub,
+  body.left-mini .sidebar .side-actions,
+  body.left-mini .sidebar #chat-list,
+  body.left-mini .sidebar .spaces-section,
+  body.left-mini .sidebar .chats-section {
+    display: none !important;
+  }
+
+  /* Center GAIA logo */
+  body.left-mini .sidebar .brand {
+    justify-content: center;
+    gap: 0;
+    margin-bottom: 12px;
+  }
+
+  /* Mini rail */
+  .mini-rail {
+    display: none;
+    flex-direction: column;
+    gap: 10px;
+    align-items: center;
+  }
+
+  body.left-mini .sidebar .mini-rail {
+    display: flex;
+  }
+
+  .mini-rail .rail-btn {
+    width: 40px;
+    height: 40px;
+    border-radius: 12px;
+    border: none;
+    background: transparent;
+    font-size: 18px;
+    cursor: pointer;
+  }
+
+  .mini-rail .rail-btn:hover {
+    background: rgba(0,0,0,0.06);
+  }
+}
+
+/* ===== FINAL: toggles always visible + slightly bigger ===== */
+:root{
+  --vault-peek: 56px;
+  --side-peek: 64px;
+}
+
+/* Make the handles bigger (ChatGPT-like) */
+.nav-toggle-btn{
+  width: 38px !important;
+  height: 76px !important;
+  border-radius: 999px !important;
+  z-index: 999999 !important;
+}
+
+/* Ensure vault/left panels do NOT clip the handle (handle sticks out horizontally) */
+#attachment-vault,
+.vault-panel,
+.sidebar{
+  overflow-x: visible !important;
+}
+
+/* Keep the vault above chat so the handle never goes "under" chat */
+#attachment-vault,
+.vault-panel{
+  z-index: 99990 !important;
+}
+
+/* When vault is collapsed, DO NOT push it fully offscreen (keep a visible rail) */
+body.vault-collapsed #attachment-vault{
+  transform: translateX(calc(100% - var(--vault-peek))) !important;
+}
+
+/* If your layout uses .vault-panel collapse too, keep it visible as a rail */
+body.vault-collapsed .vault-panel{
+  transform: translateX(calc(100% - var(--vault-peek))) !important;
+}
+
+/* ===== Left mini: show only logo + mini rail (hide Spaces/Chats completely) ===== */
+@media (min-width: 901px){
+  body.left-mini .sidebar{
+    padding: 12px 8px !important;
+    align-items: center;
+  }
+
+  /* Hide EVERYTHING except: brand, mini-rail, toggle button */
+  body.left-mini .sidebar > :not(.brand):not(.mini-rail):not(#toggle-left-nav){
+    display: none !important;
+  }
+
+  body.left-mini .mini-rail{
+    display: flex !important;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+    margin-top: 8px;
+    width: 100%;
+  }
+
+  body.left-mini .mini-rail .rail-btn{
+    width: 40px;
+    height: 40px;
+    border-radius: 12px;
+  }
+}
+
+/* ==== FIX: left-mini rail layout (logo always on top + hide everything else cleanly) ==== */
+@media (min-width: 901px){
+  body.left-mini .sidebar{
+    justify-content: flex-start !important;
+    align-items: center !important;
+    gap: 10px !important;
+  }
+
+  /* Hide EVERYTHING in sidebar except: brand (logo), mini-rail icons, and the toggle button */
+  body.left-mini .sidebar > *:not(.brand):not(.mini-rail):not(#toggle-left-nav){
+    display: none !important;
+  }
+
+  /* Force logo ABOVE icons even if DOM order changes */
+  body.left-mini .sidebar .brand{
+    order: 0 !important;
+    width: 100% !important;
+    justify-content: center !important;
+    margin: 6px 0 12px 0 !important;
+    flex: 0 0 auto !important;
+  }
+
+  body.left-mini .sidebar .mini-rail{
+    order: 1 !important;
+    flex: 0 0 auto !important;
+  }
+}
+
+/* ===========================
+   Vault collapsed: mini file icons rail
+   =========================== */
+
+/* Hidden by default (vault open) */
+.vault-mini-rail {
+  display: none;
+  flex-direction: column;
+  gap: 10px;
+  padding: 10px 8px;
+  align-items: center;
+}
+
+/* When vault is collapsed, show the mini rail */
+body.vault-collapsed .vault-mini-rail {
+  display: flex;
+}
+
+/* Optional: when collapsed, hide the big vault list area (keep header if you want) */
+body.vault-collapsed #vault-list {
+  display: none !important;
+}
+
+/* Mini icon button */
+.vault-mini-btn {
+  width: 38px;
+  height: 38px;
+  border: 0;
+  background: transparent;
+  border-radius: 999px;
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+  opacity: 0.9;
+}
+
+.vault-mini-btn:hover {
+  background: rgba(0, 0, 0, 0.06);
+  opacity: 1;
+}
+
+/* If we clone svg/img icons from the row */
+.vault-mini-btn svg,
+.vault-mini-btn img {
+  width: 18px;
+  height: 18px;
+}
+
+/* If we fall back to emoji/text icon */
+.vault-mini-btn .vault-mini-fallback {
+  font-size: 16px;
+  line-height: 1;
+}
+
+/* Vault mini icons rail (visible only when minimized) */
+.vault-mini{
+  display: none;
+  flex-direction: column;
+  gap: 10px;
+  align-items: center;
+  padding-top: 86px; /* below the toggle handle */
+}
+
+body.vault-collapsed .vault-panel .vault-mini{
+  display: flex;
+}
+
+/* hide full content when minimized (clean) */
+body.vault-collapsed .vault-panel .vault-head,
+body.vault-collapsed .vault-panel .vault-list{
+  display: none !important;
+}
+
+/* mini icon buttons */
+.vault-mini .v-mini{
+  width: 38px;
+  height: 38px;
+  border: 0;
+  background: transparent;
+  border-radius: 12px;
+  cursor: pointer;
+  font-size: 18px;
+}
+.vault-mini .v-mini:hover{
+  background: rgba(0,0,0,.06);
+}
+[data-theme="dark"] .vault-mini .v-mini:hover{
+  background: rgba(255,255,255,.08);
+}
+
+.vault-panel .vault-list { overflow: auto; }
+
+/* =========================================================
+   FIX: Vault collapse/expand — smooth transition + mini icons
+   (scoped to #vault-panel so it won't affect left sidebar)
+   ========================================================= */
+:root{
+  --vault-peek: 56px;           /* visible rail when collapsed */
+  --vault-top: 56px;            /* below your top bar */
+}
+
+@media (min-width: 769px){
+  /* Authoritative desktop vault geometry */
+  #vault-panel.vault-panel{
+    position: fixed !important;
+    top: var(--vault-top) !important;
+    right: 0 !important;
+    height: calc(100dvh - var(--vault-top)) !important;
+    width: clamp(260px, var(--vault-w, 320px), 420px) !important;
+    padding: 12px !important;
+    background: var(--panel) !important;
+    border-left: 1px solid var(--border) !important;
+    border-radius: 16px 0 0 16px !important;
+    z-index: 999 !important;
+
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 10px !important;
+
+    transform: translateX(0) !important;
+    transition: transform 220ms ease !important;
+    will-change: transform;
+    overflow: visible !important; /* allow toggle handle to hang outside */
+  }
+
+  /* Chat content should never slide under the vault */
+  .chat-column{
+    padding-right: clamp(260px, var(--vault-w, 320px), 420px) !important;
+    transition: padding-right 220ms ease !important;
+  }
+
+  body.vault-collapsed .chat-column{
+    padding-right: var(--vault-peek) !important;
+  }
+
+  /* Slide off-screen but keep a slim rail visible */
+  body.vault-collapsed #vault-panel.vault-panel{
+    transform: translateX(calc(100% - var(--vault-peek))) !important;
+  }
+
+  /* Fade full UI out/in (prevents "icon popping" during slide) */
+  #vault-panel .vault-head,
+  #vault-panel .vault-list{
+    transition: opacity 160ms ease, transform 160ms ease !important;
+    opacity: 1;
+    transform: translateX(0);
+  }
+
+  body.vault-collapsed #vault-panel .vault-head,
+  body.vault-collapsed #vault-panel .vault-list{
+    opacity: 0 !important;
+    transform: translateX(10px) !important;
+    pointer-events: none !important;
+  }
+
+  /* Scroll area */
+  #vault-panel .vault-list{
+    flex: 1 1 auto !important;
+    min-height: 0 !important;
+    overflow: auto !important;
+  }
+
+  /* Mini icon rail (visible only when collapsed) */
+  #vault-panel .vault-mini{
+    position: absolute !important;
+    top: 88px !important;       /* below toggle + head area */
+    left: 0 !important;
+    width: var(--vault-peek) !important;
+    padding: 10px 8px !important;
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: center !important;
+    gap: 10px !important;
+
+    opacity: 0;
+    transform: translateX(-6px);
+    pointer-events: none;
+    transition: opacity 160ms ease, transform 160ms ease;
+  }
+
+  body.vault-collapsed #vault-panel .vault-mini{
+    opacity: 1;
+    transform: translateX(0);
+    pointer-events: auto;
+  }
+
+  #vault-panel .vault-mini .v-mini{
+    width: 36px;
+    height: 36px;
+    border-radius: 12px;
+    border: 0;
+    background: rgba(255,255,255,.65);
+    box-shadow: 0 6px 18px rgba(0,0,0,.12);
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 18px;
+  }
+  #vault-panel .vault-mini .v-mini:hover{
+    background: rgba(255,255,255,.9);
+  }
+
+  /* Toggle handle — keep it on the vault edge and always clickable */
+  #vault-panel #toggle-vault.nav-toggle-btn.right{
+    position: absolute !important;
+    top: 50% !important;
+    left: calc(-1 * (var(--toggle-w, 34px) / 2)) !important;
+    transform: translateY(-50%) !important;
+    width: 34px !important;
+    height: 64px !important;
+    border-radius: 999px !important;
+    z-index: 1000 !important;
+  }
+}
