@@ -6,13 +6,44 @@
   <title>GAIA — Chat</title>
   <link rel="stylesheet" href="/static/styles.css" />
 </head>
+<!-- Vault File Viewer (hidden by default) -->
+<div id="vaultViewerBackdrop" class="vault-viewer-backdrop" aria-hidden="true">
+  <div class="vault-viewer" role="dialog" aria-modal="true" aria-label="File preview">
+    <div class="vault-viewer-header">
+      <div class="vault-viewer-title">
+        <span id="vaultViewerName">File</span>
+        <span id="vaultViewerMeta" class="vault-viewer-meta"></span>
+      </div>
+
+      <div class="vault-viewer-actions">
+        <button id="vaultViewerAttach" class="vault-btn">Attach</button>
+        <button id="vaultViewerDownload" class="vault-btn">Download</button>
+        <button id="vaultViewerClose" class="vault-btn vault-btn-x" aria-label="Close">✕</button>
+      </div>
+    </div>
+
+    <div class="vault-viewer-body">
+      <pre id="vaultViewerContent" class="vault-viewer-pre"></pre>
+      <div id="vaultViewerFallback" class="vault-viewer-fallback" hidden>
+        Preview not available for this file type. You can still download it.
+      </div>
+    </div>
+  </div>
+</div>
 <body>
   <!-- soft background -->
   <div class="bg-waves"></div>
 
   <div class="shell">
     <!-- Sidebar -->
-    <aside class="sidebar">
+    <aside class="sidebar" id="left-nav">
+      <!-- collapse / expand (ChatGPT-style) -->
+      <button id="toggle-left-nav"
+              class="nav-toggle-btn"
+              type="button"
+              aria-label="Collapse sidebar"
+              title="Collapse sidebar">⮜</button>
+
       <div class="brand">
         <div class="orb"></div>
         <div>
@@ -131,4 +162,27 @@
   <script src="/static/scripts/filemem.js" defer></script>
   <script src="/static/app.js" defer></script>
 </body>
-</html>
+</html><!-- Vault File Viewer (hidden by default) -->
+<div id="vaultViewerBackdrop" class="vault-viewer-backdrop" aria-hidden="true">
+  <div class="vault-viewer" role="dialog" aria-modal="true" aria-label="File preview">
+    <div class="vault-viewer-header">
+      <div class="vault-viewer-title">
+        <span id="vaultViewerName">File</span>
+        <span id="vaultViewerMeta" class="vault-viewer-meta"></span>
+      </div>
+
+      <div class="vault-viewer-actions">
+        <button id="vaultViewerAttach" class="vault-btn">Attach</button>
+        <button id="vaultViewerDownload" class="vault-btn">Download</button>
+        <button id="vaultViewerClose" class="vault-btn vault-btn-x" aria-label="Close">✕</button>
+      </div>
+    </div>
+
+    <div class="vault-viewer-body">
+      <pre id="vaultViewerContent" class="vault-viewer-pre"></pre>
+      <div id="vaultViewerFallback" class="vault-viewer-fallback" hidden>
+        Preview not available for this file type. You can still download it.
+      </div>
+    </div>
+  </div>
+</div>
