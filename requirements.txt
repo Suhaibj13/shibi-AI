@@ -12,3 +12,4 @@ anthropic
 cohere
 openai
 google-generativeai
+gunicorn
