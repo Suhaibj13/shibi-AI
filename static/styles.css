@@ -3102,3 +3102,146 @@ body.vault-collapsed .vault-panel .vault-list{
     z-index: 1000 !important;
   }
 }
+
+/* =========================================================
+   GAIA V5 — MOBILE UI OVERHAUL (<= 900px)
+   Fixes:
+   - Prevent desktop collapsed "peek rails" + egg handles on phones
+   - Full-width chat + composer (no 80% centered bar)
+   - Left nav + Files become true slide drawers (open via topbar buttons)
+   ========================================================= */
+
+@media (max-width: 900px){
+
+  /* ---- Kill desktop "egg" handles + minimized rails on mobile ---- */
+  #toggle-left-nav,
+  #toggle-vault,
+  .nav-toggle-btn,
+  .mini-rail,
+  .vault-mini-rail,
+  .vault-mini{
+    display: none !important;
+  }
+
+  /* If desktop collapsed classes exist (restored from localStorage),
+     NEVER allow the "peek strip" on mobile */
+  body.left-mini #left-nav,
+  body.sidebar-collapsed #left-nav,
+  body.left-collapsed #left-nav,
+  body.left-mini .sidebar,
+  body.sidebar-collapsed .sidebar,
+  body.left-collapsed .sidebar{
+    transform: translateX(-100%) !important;
+  }
+
+  body.vault-collapsed #attachment-vault,
+  body.vault-collapsed #vault-panel,
+  body.vault-collapsed .vault-panel{
+    transform: translateX(100%) !important;
+  }
+
+  /* ---- Full width chat + composer (override the "80% centered chat bar") ---- */
+  .chat-footer .input-bar,
+  .composer .input-bar,
+  .composer{
+    width: 100% !important;
+    margin-inline: 0 !important;
+  }
+
+  /* Remove any reserved space for desktop vault sizing */
+  .chat-column{
+    padding-left: 0 !important;
+    padding-right: 0 !important;
+  }
+
+  /* Messages should use the full viewport width */
+  .messages,
+  #messages{
+    width: 100% !important;
+    max-width: 100vw !important;
+    margin: 0 !important;
+    padding-left: 12px !important;
+    padding-right: 12px !important;
+  }
+
+  /* Composer bar should also be full width with safe padding */
+  .composer-inner,
+  #chatbar{
+    width: calc(100vw - 24px) !important;
+    max-width: 100vw !important;
+    margin: 0 12px 10px 12px !important;
+  }
+
+  /* ---- Topbar: prevent wrapping into multiple lines (scroll instead) ---- */
+  .topbar{
+    flex-wrap: nowrap !important;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    padding-top: max(env(safe-area-inset-top), 10px) !important;
+  }
+  .topbar::-webkit-scrollbar{ display:none; }
+
+  /* Keep status from exploding width */
+  #status{
+    max-width: 46vw;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  /* ---- Left Nav drawer behavior (use your existing .mobile-open class) ---- */
+  .sidebar,
+  #left-nav{
+    position: fixed !important;
+    top: 0 !important;
+    left: 0 !important;
+    bottom: 0 !important;
+    width: min(86vw, 320px) !important;
+    max-width: 320px !important;
+
+    transform: translateX(-100%) !important;
+    transition: transform .22s ease-out !important;
+
+    z-index: 1200 !important;
+    box-shadow: 12px 0 30px rgba(0,0,0,.18);
+  }
+
+  .sidebar.mobile-open,
+  #left-nav.mobile-open{
+    transform: translateX(0) !important;
+  }
+
+  /* ---- Files drawer behavior (use your existing #attachment-vault.is-open) ---- */
+  #attachment-vault{
+    position: fixed !important;
+    top: 0 !important;
+    right: 0 !important;
+    bottom: 0 !important;
+
+    width: min(86vw, 360px) !important;
+    height: 100dvh !important;
+
+    transform: translateX(100%) !important;
+    transition: transform .18s ease !important;
+
+    z-index: 1200 !important;
+    box-shadow: -12px 0 30px rgba(0,0,0,.18);
+    border-left: 1px solid var(--border);
+  }
+
+  #attachment-vault.is-open{
+    transform: translateX(0) !important;
+  }
+
+  /* Overlay should sit above chat, below drawers */
+  #mobile-overlay{ z-index: 1100 !important; }
+  #mobile-overlay.is-visible{
+    backdrop-filter: blur(2px);
+    -webkit-backdrop-filter: blur(2px);
+  }
+}
+
+/* Extra small phones: hide status entirely to avoid crowding */
+@media (max-width: 520px){
+  #status{ display:none !important; }
+}
