@@ -2053,100 +2053,107 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   });
 });
-(function setupMobileDrawers(){
+
+/* =========================================================
+   MOBILE DRAWERS (<= 900px)
+   Uses: #drawerBackdrop + body.mobile-left-open / body.mobile-right-open
+   Behavior:
+   - Left arrow opens/closes sidebar
+   - Right arrow opens/closes vault (#vault-panel)
+   - Tap anywhere outside drawers closes them
+   ========================================================= */
+(function mobileDrawersV2(){
   const mq = window.matchMedia("(max-width: 900px)");
 
-  const backdrop = document.getElementById("drawerBackdrop");
-  if (!backdrop) return;
+  document.addEventListener("DOMContentLoaded", () => {
+    const leftBtn   = document.getElementById("mobile-open-left");
+    const rightBtn  = document.getElementById("mobile-open-right");
+    const backdrop  = document.getElementById("drawerBackdrop");
+    const legacyOv  = document.getElementById("mobile-overlay"); // legacy overlay (we disable it)
 
-  // Panel selectors (add/adjust if your ids/classes differ)
-  const leftPanel  = document.querySelector(".left-nav, #leftNav, .sidebar, #sidebar");
-  const rightPanel = document.querySelector(".vault, #vault, .right-panel, #rightPanel, #filesPanel");
+    if (!leftBtn || !rightBtn || !backdrop) return;
 
-  // Toggle button selectors (add your exact selectors here if needed)
-  const leftToggleBtn = document.querySelector(
-    "#leftToggle, #leftToggleBtn, .btn-left-toggle, [data-toggle='left'], .nav-back-btn"
-  );
+    const isMobile = () => mq.matches;
+    const leftPanel = () => document.getElementById("left-nav") || document.querySelector(".sidebar");
+    const rightPanel = () => document.getElementById("vault-panel") || document.querySelector(".vault-panel");
 
-  const rightToggleBtn = document.querySelector(
-    "#rightToggle, #rightToggleBtn, .btn-right-toggle, [data-toggle='right'], .vault-toggle"
-  );
+    function setBackdrop(on){
+      backdrop.hidden = !on;
+      // hard-disable legacy overlay if it ever gets toggled elsewhere
+      if (legacyOv) legacyOv.classList.remove("is-visible");
+    }
 
-  // If your "Files(0)" pill is clickable, include it too
-  const filesPill = document.querySelector(
-    ".files-pill, #filesPill, #filesTab, [data-action='files']"
-  );
+    function closeAll(){
+      document.body.classList.remove("mobile-left-open", "mobile-right-open");
+      setBackdrop(false);
+    }
 
-  function isMobile(){ return mq.matches; }
+    function openLeft(){
+      // ensure right closed + remove desktop-collapsed states that break mobile
+      document.body.classList.remove("mobile-right-open", "vault-collapsed", "right-mini");
+      document.body.classList.remove("left-mini", "sidebar-collapsed", "left-collapsed");
+      document.body.classList.add("mobile-left-open");
+      setBackdrop(true);
+    }
 
-  function closeDrawers(){
-    document.body.classList.remove("mobile-left-open", "mobile-right-open");
-    backdrop.hidden = true;
-  }
+    function openRight(){
+      // ensure left closed + remove desktop-collapsed states that break mobile
+      document.body.classList.remove("mobile-left-open");
+      document.body.classList.remove("vault-collapsed", "right-mini");
+      document.body.classList.add("mobile-right-open");
+      setBackdrop(true);
+    }
 
-  function openLeft(){
-    // Ensure right is closed
-    document.body.classList.remove("mobile-right-open");
-    // IMPORTANT: avoid “mini/collapsed” mode hiding chats on mobile
-    document.body.classList.remove("left-mini");
-    document.body.classList.add("mobile-left-open");
-    backdrop.hidden = false;
-  }
+    leftBtn.addEventListener("click", (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      if (!isMobile()) return;
+      if (document.body.classList.contains("mobile-left-open")) closeAll();
+      else openLeft();
+    });
 
-  function openRight(){
-    document.body.classList.remove("mobile-left-open");
-    document.body.classList.remove("right-mini");
-    document.body.classList.add("mobile-right-open");
-    backdrop.hidden = false;
-  }
+    rightBtn.addEventListener("click", (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      if (!isMobile()) return;
+      if (document.body.classList.contains("mobile-right-open")) closeAll();
+      else openRight();
+    });
 
-  function toggleLeft(){
-    if (!isMobile()) return;
-    if (document.body.classList.contains("mobile-left-open")) closeDrawers();
-    else openLeft();
-  }
+    // Tap backdrop closes
+    backdrop.addEventListener("click", closeAll);
 
-  function toggleRight(){
-    if (!isMobile()) return;
-    if (document.body.classList.contains("mobile-right-open")) closeDrawers();
-    else openRight();
-  }
+    // Tap anywhere outside drawers closes (your requested behavior)
+    document.addEventListener("pointerdown", (e) => {
+      if (!isMobile()) return;
+      const anyOpen =
+        document.body.classList.contains("mobile-left-open") ||
+        document.body.classList.contains("mobile-right-open");
+      if (!anyOpen) return;
 
-  // Backdrop click = close
-  backdrop.addEventListener("click", closeDrawers);
+      const t = e.target;
+      const L = leftPanel();
+      const R = rightPanel();
 
-  // Click outside panels = close (this is what you asked for on Files panel)
-  document.addEventListener("pointerdown", (e) => {
-    if (!isMobile()) return;
-    const anyOpen =
-      document.body.classList.contains("mobile-left-open") ||
-      document.body.classList.contains("mobile-right-open");
-    if (!anyOpen) return;
+      if (leftBtn.contains(t) || rightBtn.contains(t)) return;
+      if (L && L.contains(t)) return;
+      if (R && R.contains(t)) return;
 
-    const t = e.target;
+      closeAll();
+    }, { capture: true });
 
-    // If click inside panels or on toggles/pill, ignore
-    if (leftPanel && leftPanel.contains(t)) return;
-    if (rightPanel && rightPanel.contains(t)) return;
-    if (leftToggleBtn && leftToggleBtn.contains(t)) return;
-    if (rightToggleBtn && rightToggleBtn.contains(t)) return;
-    if (filesPill && filesPill.contains(t)) return;
+    // ESC closes (useful in mobile emulation)
+    document.addEventListener("keydown", (e) => {
+      if (e.key === "Escape") closeAll();
+    });
 
-    closeDrawers();
-  }, { capture: true });
+    // If resized to desktop, close drawers
+    try { mq.addEventListener("change", () => { if (!isMobile()) closeAll(); }); }
+    catch { mq.addListener(() => { if (!isMobile()) closeAll(); }); }
 
-  // Hook toggles
-  if (leftToggleBtn) leftToggleBtn.addEventListener("click", (e) => { e.preventDefault(); toggleLeft(); });
-  if (rightToggleBtn) rightToggleBtn.addEventListener("click", (e) => { e.preventDefault(); toggleRight(); });
-  if (filesPill) filesPill.addEventListener("click", (e) => { e.preventDefault(); toggleRight(); });
-
-  // ESC closes (harmless on mobile but useful on desktop emulation)
-  document.addEventListener("keydown", (e) => {
-    if (e.key === "Escape") closeDrawers();
-  });
-
-  // If screen resized to desktop, close drawers
-  mq.addEventListener?.("change", () => {
-    if (!isMobile()) closeDrawers();
+    // Start clean
+    closeAll();
   });
 })();
+
+
