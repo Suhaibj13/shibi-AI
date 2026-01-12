@@ -3245,3 +3245,100 @@ body.vault-collapsed .vault-panel .vault-list{
 @media (max-width: 520px){
   #status{ display:none !important; }
 }
+
+/* =========================
+   Mobile drawers (Left + Right)
+   ========================= */
+.drawer-backdrop{
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,.45);
+  z-index: 9998;
+}
+
+/* If your panels have different selectors, add them to these groups */
+@media (max-width: 900px){
+
+  /* Make sure panels are above the backdrop */
+  .left-nav, #leftNav, .sidebar, #sidebar{
+    z-index: 9999;
+  }
+
+  .vault, #vault, .right-panel, #rightPanel, #filesPanel{
+    z-index: 9999;
+  }
+
+  /* LEFT drawer */
+  .left-nav, #leftNav, .sidebar, #sidebar{
+    position: fixed !important;
+    top: 0;
+    left: 0;
+    height: 100dvh !important;
+    width: min(86vw, 360px) !important;
+
+    /* IMPORTANT: ensures Spaces/Chats list is visible + scrollable */
+    display: flex !important;
+    flex-direction: column;
+    overflow: hidden;
+
+    transform: translateX(-110%);
+    transition: transform .18s ease;
+  }
+
+  /* Inner scroll (if your sidebar has a body wrapper, add selector here too) */
+  .left-nav .nav-body,
+  #leftNav .nav-body,
+  .sidebar .nav-body,
+  #sidebar .nav-body,
+  .left-nav .spaces,
+  .left-nav .chats{
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    min-height: 0;
+    flex: 1 1 auto;
+  }
+
+  body.mobile-left-open .left-nav,
+  body.mobile-left-open #leftNav,
+  body.mobile-left-open .sidebar,
+  body.mobile-left-open #sidebar{
+    transform: translateX(0);
+  }
+
+  /* RIGHT drawer (Files) */
+  .vault, #vault, .right-panel, #rightPanel, #filesPanel{
+    position: fixed !important;
+    top: 0;
+    right: 0;
+    height: 100dvh !important;
+    width: min(86vw, 360px) !important;
+
+    display: flex !important;
+    flex-direction: column;
+    overflow: hidden;
+
+    transform: translateX(110%);
+    transition: transform .18s ease;
+  }
+
+  body.mobile-right-open .vault,
+  body.mobile-right-open #vault,
+  body.mobile-right-open .right-panel,
+  body.mobile-right-open #rightPanel,
+  body.mobile-right-open #filesPanel{
+    transform: translateX(0);
+  }
+
+  /* Backdrop only when a drawer is open */
+  body.mobile-left-open .drawer-backdrop,
+  body.mobile-right-open .drawer-backdrop{
+    display: block;
+  }
+
+  /* Lock page scrolling when drawer open */
+  body.mobile-left-open,
+  body.mobile-right-open{
+    overflow: hidden;
+    touch-action: none;
+  }
+}
