@@ -1,56 +1,59 @@
-// scripts/attachments.js
-// GAIA V5 - Attachments Manager (frontend-only)
-// Non-breaking: falls back to JSON when there are no files.
+// static/scripts/attachments.js
+// GAIA Attachments Manager — supports BOTH legacy IDs and GAIA (+ menu) IDs.
 
 export class AttachmentsManager {
   constructor(opts) {
     this.maxFiles = opts?.maxFiles ?? 10;
-    this.maxSizeMB = opts?.maxSizeMB ?? 25; // per-file limit
-    this.accept = opts?.accept ?? "*/*"; // change if you want to restrict types later
+    this.maxSizeMB = opts?.maxSizeMB ?? 25;
+    this.accept = opts?.accept ?? "*/*";
     this.files = []; // { id, file, name, size, type, icon }
+
     this.ui = {
-      panel: document.querySelector("#attachments-panel"),
+      panel:
+        document.querySelector("#attachments-panel") ||
+        document.querySelector("#attach-chips") ||
+        document.querySelector(".attach-chips"),
       input: document.querySelector("#file-input"),
-      trigger: document.querySelector("#btn-attach"),
-      menu: document.querySelector("#attach-menu"),
+      plusUpload: document.querySelector("#plus-upload"),
       count: document.querySelector("#attachments-count"),
     };
+
+    // Global hook so vault (or other scripts) can attach files easily
+    window.GAIA_ATTACHMENTS = this;
+
     this.#wire();
+    this.render();
   }
 
   #wire() {
+    // File input
     if (this.ui.input) {
       this.ui.input.setAttribute("accept", this.accept);
       this.ui.input.addEventListener("change", (e) => {
         const picked = Array.from(e.target.files || []);
         if (!picked.length) return;
         this.addFiles(picked);
-        e.target.value = ""; // reset for same-file re-pick
+        e.target.value = "";
       });
     }
-    if (this.ui.trigger && this.ui.menu) {
-      this.ui.trigger.addEventListener("click", () => {
-        this.ui.menu.classList.toggle("open");
-      });
-      document.addEventListener("click", (ev) => {
-        if (!this.ui.menu.contains(ev.target) && ev.target !== this.ui.trigger) {
-          this.ui.menu.classList.remove("open");
-        }
+
+    // + menu Upload button → open the same file input
+    if (this.ui.plusUpload && this.ui.input) {
+      this.ui.plusUpload.addEventListener("click", (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        this.ui.input.click();
       });
     }
   }
 
   addFiles(fileList) {
     for (const f of fileList) {
-      if (this.files.length >= this.maxFiles) {
-        this.#toast(`Max ${this.maxFiles} files allowed.`);
-        break;
-      }
+      if (this.files.length >= this.maxFiles) break;
+
       const sizeMB = f.size / (1024 * 1024);
-      if (sizeMB > this.maxSizeMB) {
-        this.#toast(`"${f.name}" is larger than ${this.maxSizeMB} MB.`);
-        continue;
-      }
+      if (sizeMB > this.maxSizeMB) continue;
+
       const id = `${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
       this.files.push({
         id,
@@ -64,8 +67,15 @@ export class AttachmentsManager {
     this.render();
   }
 
+  // Attach a vault record that contains { data: Blob, name, type }
+  addFromVaultRecord(rec) {
+    if (!rec?.data || !(rec.data instanceof Blob)) return;
+    const f = new File([rec.data], rec.name || "file", { type: rec.type || "application/octet-stream" });
+    this.addFiles([f]);
+  }
+
   remove(id) {
-    this.files = this.files.filter(f => f.id !== id);
+    this.files = this.files.filter((x) => x.id !== id);
     this.render();
   }
 
@@ -74,49 +84,50 @@ export class AttachmentsManager {
     this.render();
   }
 
-  count() {
-    return this.files.length;
-  }
-
-  // If attachments exist → returns FormData
-  // Else → returns null (caller sends JSON as usual)
-  buildFormDataIfAny(message) {
+  // Build multipart only when files exist
+  buildFormDataIfAny(payload) {
     if (!this.files.length) return null;
+
     const fd = new FormData();
-    fd.append("message", message);
-    this.files.forEach((f, idx) => {
-      fd.append("files[]", f.file, f.name);
-    });
-    // Optional: include a tiny manifest for the server
-    fd.append("attachments_meta", JSON.stringify(this.files.map(x => ({
-      name: x.name, size: x.size, type: x.type
-    }))));
+    fd.append("message", String(payload?.message ?? payload?.q ?? ""));
+
+    // Keep these aligned with app.py (request.form.get(...))
+    if (payload?.model) fd.append("model", String(payload.model));
+    if (payload?.model_version) fd.append("model_version", String(payload.model_version));
+    if (payload?.style) fd.append("style", String(payload.style));
+    if (payload?.history != null) {
+      fd.append("history", typeof payload.history === "string" ? payload.history : JSON.stringify(payload.history));
+    }
+
+    this.files.forEach((f) => fd.append("files[]", f.file, f.name));
     return fd;
   }
 
-  // UI
-
   render() {
-    if (!this.ui.panel) return;
-    this.ui.panel.innerHTML = "";
+    const host = this.ui.panel;
+    if (!host) return;
+
     if (!this.files.length) {
-      this.ui.panel.classList.add("hidden");
+      host.innerHTML = "";
+      host.style.display = "none";
       if (this.ui.count) this.ui.count.textContent = "";
       return;
     }
-    this.ui.panel.classList.remove("hidden");
 
+    host.style.display = "";
+
+    host.innerHTML = "";
     for (const f of this.files) {
       const el = document.createElement("div");
       el.className = "attach-chip";
       el.innerHTML = `
         <span class="chip-icon">${f.icon}</span>
-        <span class="chip-name" title="${f.name}">${this.#truncate(f.name, 28)}</span>
+        <span class="chip-name" title="${this.#esc(f.name)}">${this.#esc(this.#truncate(f.name, 28))}</span>
         <span class="chip-size">${this.#prettySize(f.size)}</span>
-        <button class="chip-x" aria-label="Remove">&times;</button>
+        <button class="chip-x" type="button" aria-label="Remove">&times;</button>
       `;
-      el.querySelector(".chip-x").addEventListener("click", () => this.remove(f.id));
-      this.ui.panel.appendChild(el);
+      el.querySelector(".chip-x")?.addEventListener("click", () => this.remove(f.id));
+      host.appendChild(el);
     }
 
     if (this.ui.count) {
@@ -124,20 +135,16 @@ export class AttachmentsManager {
     }
   }
 
-  // Helpers
-
   #iconFor(mime, name) {
     const lower = (name || "").toLowerCase();
-    if (mime.startsWith("image/")) return "🖼️";
+    if ((mime || "").startsWith("image/")) return "🖼️";
     if (mime === "application/pdf" || lower.endsWith(".pdf")) return "📄";
-    if (mime.startsWith("text/") || /\.(txt|csv|log|md|json|yaml|yml|xml)$/i.test(lower)) return "📜";
-    if (/\.(ppt|pptx)$/i.test(lower)) return "📊";
-    if (/\.(xls|xlsx|ods|tsv|csv)$/i.test(lower)) return "📈";
-    if (/\.(zip|rar|7z|tar|gz)$/i.test(lower)) return "🗜️";
+    if ((mime || "").startsWith("text/") || /\.(txt|csv|log|md|json|yaml|yml|xml)$/i.test(lower)) return "📜";
     return "📎";
   }
 
   #prettySize(bytes) {
+    if (!Number.isFinite(bytes)) return "";
     if (bytes < 1024) return `${bytes} B`;
     const kb = bytes / 1024;
     if (kb < 1024) return `${kb.toFixed(1)} KB`;
@@ -146,12 +153,17 @@ export class AttachmentsManager {
   }
 
   #truncate(s, n) {
+    s = String(s || "");
     return s.length > n ? s.slice(0, n - 3) + "…" : s;
   }
 
-  #toast(msg) {
-    // super-lightweight inline toast (non-intrusive)
-    console.warn("[Attachments]", msg);
-    // hook into your existing toast/snackbar if you have one
+  #esc(s) {
+    return String(s || "").replace(/[&<>"']/g, (c) => ({
+      "&": "&amp;",
+      "<": "&lt;",
+      ">": "&gt;",
+      '"': "&quot;",
+      "'": "&#39;",
+    }[c]));
   }
 }
