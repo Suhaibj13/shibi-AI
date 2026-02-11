@@ -198,23 +198,43 @@ def call_chat_completion(provider: str, model_id: str, system: str, user: str, t
         return (resp.choices[0].message.content or "").strip()
 
     if provider == "openai":
+        api_key = os.getenv("GPT_API_KEY") or os.getenv("OPENAI_API_KEY") or os.getenv("OPENAI_KEY")
+        if not api_key:
+            raise RuntimeError("OpenAI API key missing. Set GPT_API_KEY or OPENAI_API_KEY.")
+
+        # detect SDK version
         try:
-            from openai import OpenAI
-            client = OpenAI(api_key=(os.getenv("GPT_API_KEY") or os.getenv("OPENAI_API_KEY")))
+            import openai
+            ver = getattr(openai, "__version__", "0")
+            major = int(str(ver).split(".", 1)[0])
+        except Exception:
+            major = 0
+
+        if major >= 1:
+            try:
+                from openai import OpenAI
+                client = OpenAI(api_key=api_key)
+            except Exception:
+                import openai as openai_mod
+                client = openai_mod.OpenAI(api_key=api_key)
+
             resp = client.chat.completions.create(
                 model=model_id,
                 temperature=temperature,
                 messages=[{"role":"system","content":system},{"role":"user","content":user}]
             )
             return (resp.choices[0].message.content or "").strip()
-        except Exception:
-            import openai as openai_legacy
-            openai_legacy.api_key = (os.getenv("GPT_API_KEY") or os.getenv("OPENAI_API_KEY"))
-            r = openai_legacy.ChatCompletion.create(
-                model=model_id,
-                messages=[{"role":"system","content":system},{"role":"user","content":user}]
-            )
-            return (r["choices"][0]["message"]["content"] or "").strip()
+
+        # legacy (<1.0)
+        import openai as openai_legacy
+        openai_legacy.api_key = api_key
+        r = openai_legacy.ChatCompletion.create(
+            model=model_id,
+            messages=[{"role":"system","content":system},{"role":"user","content":user}],
+            temperature=temperature
+        )
+        return (r["choices"][0]["message"]["content"] or "").strip()
+
 
     if provider == "anthropic":
         try:
