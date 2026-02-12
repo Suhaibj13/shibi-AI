@@ -1,5 +1,5 @@
 # main.py (drop-in /ask)
-from flask import Flask, render_template, request, jsonify, Response, stream_with_context
+from flask import Flask, render_template, request, jsonify, Response, stream_with_context, g
 from dotenv import load_dotenv
 import os, json, time, logging
 from models import resolve  # GAIA V5 model resolver
@@ -80,6 +80,122 @@ if cohere_provider is None:
     except Exception:
         pass
 import math, json  # make sure json is imported too
+
+# --- Auth + Firestore (Mark2) ---
+from gcp_auth_firestore import (
+    init_firebase_admin,
+    get_db,
+    verify_bearer_token,
+    auth_optional_enabled,
+    ensure_user_doc,
+)
+from google.cloud import firestore
+
+init_firebase_admin()
+db = get_db()
+
+def _require_auth_or_none():
+    """Attempt to verify Bearer token; optionally enforce via GAIA_REQUIRE_AUTH=1."""
+    decoded = verify_bearer_token(request.headers.get("Authorization", ""))
+    if decoded:
+        g.uid = decoded.get("uid")
+        g.email = decoded.get("email", "")
+        # name may not exist; keep empty
+        g.name = decoded.get("name", "") or ""
+        try:
+            ensure_user_doc(g.uid, g.email, g.name)
+        except Exception:
+            pass
+        return decoded
+
+    g.uid = None
+    g.email = ""
+    g.name = ""
+    return None
+
+@app.before_request
+def _auth_mw():
+    # Allow unauth access to home + static + models list (UI must load first)
+    p = request.path or ""
+    if p.startswith("/static/") or p in ("/", "/models/versions"):
+        _require_auth_or_none()
+        return
+    _require_auth_or_none()
+
+def _uid():
+    return getattr(g, "uid", None)
+
+def _auth_required_or_401():
+    if _uid():
+        return None
+    if auth_optional_enabled():
+        return None
+    return jsonify({"ok": False, "error": "auth_required"}), 401
+
+# -------- Firestore helpers --------
+def fs_new_chat(uid: str, title: str = "New chat", space_id: str = "default") -> str:
+    ref = db.collection("chats").document()
+    ref.set({
+        "uid": uid,
+        "title": title,
+        "spaceId": space_id,
+        "createdAt": firestore.SERVER_TIMESTAMP,
+        "updatedAt": firestore.SERVER_TIMESTAMP,
+        "pinned": False,
+        "archived": False,
+    })
+    return ref.id
+
+def fs_list_chats(uid: str, limit: int = 200):
+    q = (db.collection("chats")
+         .where("uid", "==", uid)
+         .order_by("updatedAt", direction=firestore.Query.DESCENDING)
+         .limit(limit))
+    out = []
+    for doc in q.stream():
+        d = doc.to_dict() or {}
+        d["id"] = doc.id
+        out.append(d)
+    return out
+
+def fs_get_messages(uid: str, chat_id: str, limit: int = 400):
+    chat = db.collection("chats").document(chat_id).get()
+    if not chat.exists or (chat.to_dict() or {}).get("uid") != uid:
+        return None
+    q = (db.collection("chats").document(chat_id)
+         .collection("messages")
+         .order_by("createdAt")
+         .limit(limit))
+    out = []
+    for doc in q.stream():
+        d = doc.to_dict() or {}
+        d["id"] = doc.id
+        out.append(d)
+    return out
+
+def fs_add_message(uid: str, chat_id: str, role: str, content: str, meta=None):
+    chat_ref = db.collection("chats").document(chat_id)
+    snap = chat_ref.get()
+    if not snap.exists or (snap.to_dict() or {}).get("uid") != uid:
+        return False
+    mref = chat_ref.collection("messages").document()
+    mref.set({
+        "uid": uid,
+        "role": role,
+        "content": content,
+        "meta": meta or {},
+        "createdAt": firestore.SERVER_TIMESTAMP,
+    })
+    chat_ref.set({"updatedAt": firestore.SERVER_TIMESTAMP}, merge=True)
+    return True
+
+def fs_touch_title(uid: str, chat_id: str, title: str):
+    chat_ref = db.collection("chats").document(chat_id)
+    snap = chat_ref.get()
+    if not snap.exists or (snap.to_dict() or {}).get("uid") != uid:
+        return False
+    chat_ref.set({"title": title, "updatedAt": firestore.SERVER_TIMESTAMP}, merge=True)
+    return True
 
 FOLLOWUP_WORDS = {"explain", "elaborate", "more", "clarify", "details", "expand", "why"}
 
@@ -188,6 +304,64 @@ def models_versions():
     force = (request.args.get("force") == "1")
     data = get_versions_catalog(UI_MODEL_KEYS, max_versions=5, force=force)
     return jsonify({"ok": True, "data": data})
+
+
+# ---------------- Auth + Chat APIs (Mark2) ----------------
+@app.get("/api/me")
+def api_me():
+    if not _uid():
+        if auth_optional_enabled():
+            return jsonify({"ok": True, "user": None})
+        return jsonify({"ok": False, "error": "auth_required"}), 401
+    return jsonify({"ok": True, "user": {"uid": _uid(), "email": getattr(g, "email", "")}})
+
+@app.get("/api/chats")
+def api_list_chats():
+    auth_err = _auth_required_or_401()
+    if auth_err:
+        return auth_err
+    if not _uid():
+        return jsonify({"ok": True, "data": []})
+    chats = fs_list_chats(_uid(), limit=200)
+    return jsonify({"ok": True, "data": chats})
+
+@app.post("/api/chats")
+def api_create_chat():
+    if not _uid():
+        return jsonify({"ok": False, "error": "auth_required"}), 401
+    payload = request.get_json(silent=True) or {}
+    title = (payload.get("title") or "New chat").strip()[:120]
+    space_id = (payload.get("spaceId") or "default").strip()[:80]
+    chat_id = fs_new_chat(_uid(), title=title, space_id=space_id)
+    return jsonify({"ok": True, "id": chat_id})
+
+@app.get("/api/chats/<chat_id>/messages")
+def api_get_messages(chat_id):
+    if not _uid():
+        auth_err = _auth_required_or_401()
+        if auth_err:
+            return auth_err
+        return jsonify({"ok": True, "data": []})
+    msgs = fs_get_messages(_uid(), chat_id, limit=400)
+    if msgs is None:
+        return jsonify({"ok": False, "error": "not_found"}), 404
+    return jsonify({"ok": True, "data": msgs})
+
+@app.post("/api/chats/<chat_id>/messages")
+def api_add_message(chat_id):
+    if not _uid():
+        return jsonify({"ok": False, "error": "auth_required"}), 401
+    payload = request.get_json(silent=True) or {}
+    role = (payload.get("role") or "").strip()
+    content = (payload.get("content") or "").strip()
+    meta = payload.get("meta") or {}
+    if role not in ("user", "assistant", "system") or not content:
+        return jsonify({"ok": False, "error": "bad_request"}), 400
+    ok = fs_add_message(_uid(), chat_id, role, content, meta=meta)
+    if not ok:
+        return jsonify({"ok": False, "error": "not_found"}), 404
+    return jsonify({"ok": True})
+
 
 
 
@@ -392,6 +566,14 @@ def ask():
 
         res = make_reply(q, model_key=model_key, model_version=model_version, history=history)
 
+        chat_id = (payload.get("chatId") or "").strip()
+        if _uid() and chat_id:
+            try:
+                fs_add_message(_uid(), chat_id, "user", q, meta={"model_key": model_key, "model_version": model_version})
+                fs_add_message(_uid(), chat_id, "assistant", res.get("reply","") or "", meta={"model": res.get("model_used")})
+            except Exception:
+                pass
+
         return jsonify({
             "ok": True,
             "reply": res.get("reply", ""),
@@ -411,6 +593,7 @@ def ask_stream():
     raw_hist = request.args.get("history") or "[]"
     model_key = (request.args.get("model") or "grok").strip().lower()
     model_version = (request.args.get("model_version") or "").strip()
+    chat_id = (request.args.get("chatId") or "").strip()
     try:
         history = json.loads(raw_hist)
     except Exception:
@@ -446,6 +629,14 @@ def ask_stream():
             # stream the text
             for chunk in _yield_in_words(final_text, delay=0.0):
                 yield _sse("delta", {"text": chunk})
+
+            # stream_persist: store final messages if authed
+            if _uid() and chat_id:
+                try:
+                    fs_add_message(_uid(), chat_id, "user", q, meta={"via":"sse","model_key": model_key, "model_version": model_version})
+                    fs_add_message(_uid(), chat_id, "assistant", final_text, meta={"model": used_model})
+                except Exception:
+                    pass
 
             yield _sse("done", {"ok": True})
 
