@@ -22,6 +22,20 @@ async function gaiaFetch(url, opts = {}) {
 
 async function gaiaJson(url, opts = {}) {
   const res = await gaiaFetch(url, opts);
+
+  // 🔐 AUTH ENFORCEMENT HANDLING
+  if (res.status === 401) {
+    GAIA_ID_TOKEN = "";
+    GAIA_USER = null;
+    localStorage.removeItem("gaia_id_token");
+
+    if (typeof openAuthModal === "function") {
+      openAuthModal();
+    }
+
+    return { res, data: { ok: false, error: "auth_required" } };
+  }
+
   const data = await res.json().catch(() => ({}));
   return { res, data };
 }
