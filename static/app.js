@@ -7,6 +7,206 @@
   // DOM refs
   const messagesEl = $("#messages");
   const inputEl = $("#input");
+
+
+// --- Auth state (Mark2) ---
+let GAIA_ID_TOKEN = localStorage.getItem("gaia_id_token") || "";
+let GAIA_USER = null;
+
+async function gaiaFetch(url, opts = {}) {
+  const headers = new Headers(opts.headers || {});
+  // Preserve FormData boundary: don't set content-type for FormData
+  if (GAIA_ID_TOKEN) headers.set("Authorization", "Bearer " + GAIA_ID_TOKEN);
+  return fetch(url, { ...opts, headers });
+}
+
+async function gaiaJson(url, opts = {}) {
+  const res = await gaiaFetch(url, opts);
+
+  // 🔐 AUTH ENFORCEMENT HANDLING
+  if (res.status === 401) {
+    GAIA_ID_TOKEN = "";
+    GAIA_USER = null;
+    localStorage.removeItem("gaia_id_token");
+
+    if (typeof openAuthModal === "function") {
+      openAuthModal();
+    }
+
+    return { res, data: { ok: false, error: "auth_required" } };
+  }
+
+  const data = await res.json().catch(() => ({}));
+  return { res, data };
+}
+
+async function gaiaAfterLogin() {
+  const { data } = await gaiaJson("/api/me");
+  GAIA_USER = data?.user || null;
+  // Best-effort server sync; falls back to local if endpoints unavailable
+  try { await gaiaLoadChatsFromServer(); } catch (_) {}
+  updateAuthButton();
+}
+
+async function gaiaAfterLogout() {
+  GAIA_ID_TOKEN = "";
+  GAIA_USER = null;
+  localStorage.removeItem("gaia_id_token");
+  updateAuthButton();
+}
+
+function updateAuthButton() {
+  const btn = document.getElementById("auth-btn");
+  if (!btn) return;
+  btn.title = GAIA_ID_TOKEN ? "Account" : "Login";
+  btn.setAttribute("aria-label", GAIA_ID_TOKEN ? "Account" : "Login");
+}
+
+// Optional: load chats/messages from server and hydrate existing local renderer
+async function gaiaLoadChatsFromServer() {
+  if (!GAIA_ID_TOKEN) return;
+  const { data } = await gaiaJson("/api/chats");
+  if (!data?.ok) return;
+  const serverChats = data.data || [];
+
+  const mapped = serverChats.map(c => ({
+    id: c.id,
+    title: c.title || "Chat",
+    history: [],
+    stats: { in_tokens: 0, out_tokens: 0, total_tokens: 0 },
+    branch: { active: 1 },
+    meta: { server: true }
+  }));
+
+  localStorage.setItem("gaia_chats_v2", JSON.stringify(mapped));
+
+  // Ensure current chat
+  if (!window.currentId && mapped[0]) window.currentId = mapped[0].id;
+
+  if (window.currentId) {
+    await gaiaLoadMessagesForChat(window.currentId);
+  }
+
+  if (typeof renderChatList === "function") renderChatList();
+  if (typeof renderChat === "function") renderChat();
+}
+
+async function gaiaLoadMessagesForChat(chatId) {
+  if (!GAIA_ID_TOKEN || !chatId) return;
+  const { data } = await gaiaJson(`/api/chats/${encodeURIComponent(chatId)}/messages`);
+  if (!data?.ok) return;
+  const msgs = data.data || [];
+  const chat = (typeof getChat === "function") ? getChat(chatId) : null;
+  if (!chat) return;
+  chat.history = msgs.map(m => ({
+    role: m.role,
+    content: m.content,
+    meta: m.meta || null,
+    time: Date.now()
+  }));
+  if (typeof updateChat === "function") updateChat(chat);
+}
+
+function openAuthModal() {
+  const tpl = document.getElementById("auth-modal-template");
+  const modal = document.getElementById("gaia-modal");
+  const title = document.getElementById("gaia-modal-title");
+  const body = document.getElementById("gaia-modal-body");
+  const okBtn = document.getElementById("gaia-modal-ok");
+  if (!tpl || !modal || !title || !body) return;
+
+  title.textContent = "Sign in to GAIA";
+  body.innerHTML = "";
+  body.appendChild(tpl.content.cloneNode(true));
+  if (okBtn) okBtn.style.display = "none";
+  modal.classList.add("is-open");
+
+  const tabs = Array.from(body.querySelectorAll(".auth-tab"));
+  const panes = Array.from(body.querySelectorAll(".auth-pane"));
+  const fb = window.__GAIA_FB;
+  const cfg = window.GAIA_FIREBASE_CONFIG;
+
+  function setTab(name) {
+    tabs.forEach(t => t.classList.toggle("is-active", t.dataset.tab === name));
+    panes.forEach(p => p.hidden = (p.dataset.pane !== name));
+  }
+  tabs.forEach(t => t.addEventListener("click", () => setTab(t.dataset.tab)));
+  setTab("email");
+
+  const emailEl = body.querySelector("#auth-email");
+  const passEl = body.querySelector("#auth-pass");
+  const msgEmail = body.querySelector("#auth-msg-email");
+  const msgGoogle = body.querySelector("#auth-msg-google");
+  const logoutBtn = body.querySelector("#auth-logout");
+
+  const setMsg = (el, t) => { if (el) el.textContent = t || ""; };
+
+  if (!fb || !cfg || !cfg.apiKey) {
+    setMsg(msgEmail, "Auth is not configured. Add GAIA_FIREBASE_CONFIG + Firebase SDK scripts in index.html.");
+    return;
+  }
+
+  const app = fb.initializeApp(cfg);
+  const auth = fb.getAuth(app);
+
+  body.querySelector("#auth-signin")?.addEventListener("click", async () => {
+    setMsg(msgEmail, "");
+    try {
+      const cred = await fb.signInWithEmailAndPassword(auth, (emailEl.value||"").trim(), passEl.value||"");
+      const tok = await cred.user.getIdToken(true);
+      GAIA_ID_TOKEN = tok;
+      localStorage.setItem("gaia_id_token", tok);
+      modal.classList.remove("is-open");
+      await gaiaAfterLogin();
+    } catch (e) {
+      setMsg(msgEmail, e?.message || "Sign in failed");
+    }
+  });
+
+  body.querySelector("#auth-signup")?.addEventListener("click", async () => {
+    setMsg(msgEmail, "");
+    try {
+      const cred = await fb.createUserWithEmailAndPassword(auth, (emailEl.value||"").trim(), passEl.value||"");
+      const tok = await cred.user.getIdToken(true);
+      GAIA_ID_TOKEN = tok;
+      localStorage.setItem("gaia_id_token", tok);
+      modal.classList.remove("is-open");
+      await gaiaAfterLogin();
+    } catch (e) {
+      setMsg(msgEmail, e?.message || "Sign up failed");
+    }
+  });
+
+  body.querySelector("#auth-google")?.addEventListener("click", async () => {
+    setMsg(msgGoogle, "");
+    try {
+      const provider = new fb.GoogleAuthProvider();
+      const cred = await fb.signInWithPopup(auth, provider);
+      const tok = await cred.user.getIdToken(true);
+      GAIA_ID_TOKEN = tok;
+      localStorage.setItem("gaia_id_token", tok);
+      modal.classList.remove("is-open");
+      await gaiaAfterLogin();
+    } catch (e) {
+      setMsg(msgGoogle, e?.message || "Google sign in failed");
+    }
+  });
+
+  if (GAIA_ID_TOKEN && logoutBtn) {
+    logoutBtn.hidden = false;
+    logoutBtn.addEventListener("click", async () => {
+      try { await fb.signOut(auth); } catch (_) {}
+      modal.classList.remove("is-open");
+      await gaiaAfterLogout();
+    });
+  }
+}
+
+// Wire auth button if present
+document.getElementById("auth-btn")?.addEventListener("click", openAuthModal);
+updateAuthButton();
+if (GAIA_ID_TOKEN) { gaiaAfterLogin().catch(()=>{}); }
+
   const sendBtn = $("#send");
   const modelSel = $("#model");
   const versionSel = document.getElementById("model-version");
@@ -436,9 +636,9 @@
     GAIA_ABORT = new AbortController();
   
     try {
-      const res = await fetch("/ask", {
+      const res = await gaiaFetch("/ask", {
         method: "POST",
-        headers: withAuthHeaders({ "Content-Type": "application/json" }),
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           model: modelSel?.value || "grok",
           model_version: versionSel?.value || "",
@@ -1434,7 +1634,7 @@ function syncVaultMiniRail() {
     } else {
       fetchOptions = {
         method: "POST",
-        headers: withAuthHeaders({ "Content-Type": "application/json" }),
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           model: modelSel?.value || "grok",
           model_version: versionSel?.value || "",
@@ -1448,8 +1648,7 @@ function syncVaultMiniRail() {
 
     // ---- Request/response ----
     try {
-      const res = await fetchOptions.headers = withAuthHeaders(fetchOptions.headers || {});
-      fetch("/ask", fetchOptions);
+      const res = await gaiaFetch("/ask", fetchOptions);
 
       // Guard against HTML error pages (so res.json() doesn’t throw)
       const ct = res.headers.get("content-type") || "";
@@ -2292,5 +2491,3 @@ document.addEventListener("DOMContentLoaded", () => {
     closeAll();
   });
 })();
-
-
