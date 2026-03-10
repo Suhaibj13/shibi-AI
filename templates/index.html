@@ -81,13 +81,12 @@
                 aria-label="Open file vault">
           →
         </button>
-        <button id="auth-btn" class="icon-btn" title="Login" aria-label="Login">
-          <span aria-hidden="true">👤</span>
-        </button>
-
 
         <button id="theme-toggle" class="icon-btn" title="Toggle theme" aria-label="Toggle theme">
           <span id="theme-icon" aria-hidden="true">🌙</span>
+        </button>
+        <button id="auth-btn" class="icon-btn" title="Login" aria-label="Login">
+          <span id="auth-icon" aria-hidden="true">🔐</span>
         </button>
       </header>
 
@@ -150,8 +149,53 @@
   </div>
   <!-- Mobile dim background when side panels are open -->
   <div id="mobile-overlay"></div>
+  <script>
+    // Injected config placeholders (set these via env->template if you want later)
+    window.GAIA_FIREBASE_CONFIG = {
+        apiKey: "AIzaSyCD47WrN4xlS-rHkwkJrpOg8inQ0vcU3OE",
+        authDomain: "aira-477913-d02c6.firebaseapp.com",
+        projectId: "aira-477913-d02c6",
+        storageBucket: "aira-477913-d02c6.firebasestorage.app",
+        messagingSenderId: "6871258176",
+        appId: "1:6871258176:web:77a62de1a301d3d5703ba5",
+        measurementId: "G-214W38FDTB"
+    };
+  </script>
 
-  
+  <!-- Auth modal content template (JS will place it inside your gaia-modal) -->
+  <template id="auth-modal-template">
+    <div class="auth-tabs">
+      <button class="auth-tab is-active" data-tab="email">Email</button>
+      <button class="auth-tab" data-tab="google">Google</button>
+    </div>
+
+    <div class="auth-pane" data-pane="email">
+      <div class="auth-row">
+        <label>Email</label>
+        <input id="auth-email" type="email" placeholder="you@domain.com" autocomplete="email">
+      </div>
+      <div class="auth-row">
+        <label>Password</label>
+        <input id="auth-pass" type="password" placeholder="••••••••" autocomplete="current-password">
+      </div>
+      <div class="auth-actions">
+        <button id="auth-signin" class="btn">Sign in</button>
+        <button id="auth-signup" class="btn ghost">Create account</button>
+      </div>
+      <div class="auth-msg" id="auth-msg-email"></div>
+    </div>
+
+    <div class="auth-pane" data-pane="google" hidden>
+      <p class="auth-note">Sign in with Google to sync chats across devices.</p>
+      <button id="auth-google" class="btn">Continue with Google</button>
+      <div class="auth-msg" id="auth-msg-google"></div>
+    </div>
+
+    <div class="auth-foot">
+      <button id="auth-logout" class="btn ghost" hidden>Logout</button>
+    </div>
+  </template>
+
   
   <script src="/static/scripts/spaces.js" defer></script>
   <script type="module">
@@ -195,4 +239,4 @@
   </script>
   <script src="/static/app.js" defer></script>
 </body>
-</html>
+</html><!-- Vault File Viewer (hidden by default) -->
