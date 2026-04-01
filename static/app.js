@@ -107,12 +107,42 @@ async function gaiaLoadMessagesForChat(chatId) {
   if (typeof updateChat === "function") updateChat(chat);
 }
 
+// --- Global Firebase Init to prevent double-initialization ---
+let authInstance = null;
+
+function getFirebaseAuth() {
+  const fb = window.__GAIA_FB;
+  const cfg = window.GAIA_FIREBASE_CONFIG;
+  
+  if (!fb || !cfg || !cfg.apiKey) {
+    console.error("Firebase config or SDK missing.");
+    return null;
+  }
+
+  // Only initialize the app once globally
+  if (!authInstance) {
+    try {
+      const app = fb.initializeApp(cfg);
+      authInstance = fb.getAuth(app);
+    } catch (e) {
+      // If already initialized, just get the auth instance safely
+      if (e.code === 'app/duplicate-app') {
+        authInstance = fb.getAuth(); 
+      } else {
+        console.error("Firebase Init Error:", e);
+      }
+    }
+  }
+  return authInstance;
+}
+
 function openAuthModal() {
   const tpl = document.getElementById("auth-modal-template");
   const modal = document.getElementById("gaia-modal");
   const title = document.getElementById("gaia-modal-title");
   const body = document.getElementById("gaia-modal-body");
   const okBtn = document.getElementById("gaia-modal-ok");
+
   if (!tpl || !modal || !title || !body) return;
 
   title.textContent = "Sign in to GAIA";
@@ -123,9 +153,7 @@ function openAuthModal() {
 
   const tabs = Array.from(body.querySelectorAll(".auth-tab"));
   const panes = Array.from(body.querySelectorAll(".auth-pane"));
-  const fb = window.__GAIA_FB;
-  const cfg = window.GAIA_FIREBASE_CONFIG;
-
+  
   function setTab(name) {
     tabs.forEach(t => t.classList.toggle("is-active", t.dataset.tab === name));
     panes.forEach(p => p.hidden = (p.dataset.pane !== name));
@@ -138,17 +166,17 @@ function openAuthModal() {
   const msgEmail = body.querySelector("#auth-msg-email");
   const msgGoogle = body.querySelector("#auth-msg-google");
   const logoutBtn = body.querySelector("#auth-logout");
-
   const setMsg = (el, t) => { if (el) el.textContent = t || ""; };
 
-  if (!fb || !cfg || !cfg.apiKey) {
+  const auth = getFirebaseAuth();
+  const fb = window.__GAIA_FB;
+
+  if (!auth || !fb) {
     setMsg(msgEmail, "Auth is not configured. Add GAIA_FIREBASE_CONFIG + Firebase SDK scripts in index.html.");
     return;
   }
 
-  const app = fb.initializeApp(cfg);
-  const auth = fb.getAuth(app);
-
+  // Bind click handlers to the newly cloned elements inside the modal
   body.querySelector("#auth-signin")?.addEventListener("click", async () => {
     setMsg(msgEmail, "");
     try {
@@ -202,10 +230,22 @@ function openAuthModal() {
   }
 }
 
-// Wire auth button if present
-document.getElementById("auth-btn")?.addEventListener("click", openAuthModal);
-updateAuthButton();
-if (GAIA_ID_TOKEN) { gaiaAfterLogin().catch(()=>{}); }
+// Wire auth button safely after DOM load
+document.addEventListener('DOMContentLoaded', () => {
+    const authBtn = document.getElementById("auth-btn");
+    if (authBtn) {
+        authBtn.addEventListener("click", () => {
+            if (window.__GAIA_FB) {
+                openAuthModal();
+            } else {
+                console.warn("Firebase SDKs not yet loaded");
+                alert("Authentication is still loading, please wait a moment.");
+            }
+        });
+    }
+    updateAuthButton();
+    if (GAIA_ID_TOKEN) { gaiaAfterLogin().catch(()=>{}); }
+});
 
   const sendBtn = $("#send");
   const modelSel = $("#model");
