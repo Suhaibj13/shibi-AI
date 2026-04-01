@@ -2430,6 +2430,39 @@ document.addEventListener("DOMContentLoaded", () => {
   });
 });
 
+// Noisy debug wiring for auth button
+document.addEventListener('DOMContentLoaded', () => {
+    console.log("🟢 1. Page loaded. Looking for the lock button...");
+    const authBtn = document.getElementById("auth-btn");
+
+    if (authBtn) {
+        console.log("🟢 2. Lock button found! Attaching click event.");
+        
+        authBtn.addEventListener("click", (e) => {
+            e.preventDefault();
+            console.log("🟡 3. BUTTON CLICKED!");
+
+            if (window.__GAIA_FB) {
+                console.log("🟢 4. Firebase SDK found. Triggering openAuthModal()...");
+                openAuthModal();
+                
+                // Check if the modal actually exists and got the CSS class
+                const modal = document.getElementById("gaia-modal");
+                console.log("🔵 5. Modal status:", modal ? modal.className : "MODAL HTML MISSING");
+                
+            } else {
+                console.error("🔴 FAIL: Firebase SDK did not load. window.__GAIA_FB is undefined.");
+                alert("Firebase failed to load. Check the browser console!");
+            }
+        });
+    } else {
+        console.error("🔴 FAIL: Could not find the lock button (id='auth-btn') in the HTML.");
+    }
+
+    updateAuthButton();
+    if (GAIA_ID_TOKEN) { gaiaAfterLogin().catch(()=>{}); }
+});
+
 /* =========================================================
    MOBILE DRAWERS (<= 900px)
    Uses: #drawerBackdrop + body.mobile-left-open / body.mobile-right-open
