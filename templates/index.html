@@ -6,38 +6,35 @@
   <title>GAIA — Chat</title>
   <link rel="stylesheet" href="/static/styles.css" />
 </head>
-<!-- Vault File Viewer (hidden by default) -->
-<div id="vaultViewerBackdrop" class="vault-viewer-backdrop" aria-hidden="true">
-  <div class="vault-viewer" role="dialog" aria-modal="true" aria-label="File preview">
-    <div class="vault-viewer-header">
-      <div class="vault-viewer-title">
-        <span id="vaultViewerName">File</span>
-        <span id="vaultViewerMeta" class="vault-viewer-meta"></span>
+<body>
+  <div id="vaultViewerBackdrop" class="vault-viewer-backdrop" aria-hidden="true">
+    <div class="vault-viewer" role="dialog" aria-modal="true" aria-label="File preview">
+      <div class="vault-viewer-header">
+        <div class="vault-viewer-title">
+          <span id="vaultViewerName">File</span>
+          <span id="vaultViewerMeta" class="vault-viewer-meta"></span>
+        </div>
+
+        <div class="vault-viewer-actions">
+          <button id="vaultViewerAttach" class="vault-btn">Attach</button>
+          <button id="vaultViewerDownload" class="vault-btn">Download</button>
+          <button id="vaultViewerClose" class="vault-btn vault-btn-x" aria-label="Close">✕</button>
+        </div>
       </div>
 
-      <div class="vault-viewer-actions">
-        <button id="vaultViewerAttach" class="vault-btn">Attach</button>
-        <button id="vaultViewerDownload" class="vault-btn">Download</button>
-        <button id="vaultViewerClose" class="vault-btn vault-btn-x" aria-label="Close">✕</button>
-      </div>
-    </div>
-
-    <div class="vault-viewer-body">
-      <pre id="vaultViewerContent" class="vault-viewer-pre"></pre>
-      <div id="vaultViewerFallback" class="vault-viewer-fallback" hidden>
-        Preview not available for this file type. You can still download it.
+      <div class="vault-viewer-body">
+        <pre id="vaultViewerContent" class="vault-viewer-pre"></pre>
+        <div id="vaultViewerFallback" class="vault-viewer-fallback" hidden>
+          Preview not available for this file type. You can still download it.
+        </div>
       </div>
     </div>
   </div>
-</div>
-<body>
-  <!-- soft background -->
+
   <div class="bg-waves"></div>
 
   <div class="shell">
-    <!-- Sidebar -->
     <aside class="sidebar" id="left-nav">
-      <!-- collapse / expand (ChatGPT-style) -->
       <button id="toggle-left-nav"
               class="nav-toggle-btn"
               type="button"
@@ -60,11 +57,8 @@
       <div id="chat-list" class="chat-list"></div>
     </aside>
 
-    <!-- Main column -->
     <main class="main">
-      <!-- Top bar -->
       <header class="topbar">
-        <!-- LEFT arrow: opens sidebar on mobile -->
         <button id="mobile-open-left"
                 class="topbar-icon mobile-only"
                 aria-label="Open navigation">
@@ -75,7 +69,6 @@
 
         <div class="topbar-spacer"></div>
 
-        <!-- RIGHT arrow: opens file vault on mobile -->
         <button id="mobile-open-right"
                 class="topbar-icon mobile-only"
                 aria-label="Open file vault">
@@ -90,11 +83,9 @@
         </button>
       </header>
 
-      <!-- Chat stream (messages + composer merged) -->
       <section class="chat-column">
         <div id="messages" class="messages"></div>
 
-        <!-- Composer (merged at bottom of the scroll column) -->
         <footer class="composer">
           <div class="composer-inner" id="chatbar">
             <select id="model" class="model-select" aria-label="Model">
@@ -102,17 +93,16 @@
               <option value="gpt-5">ChatGPT (OpenAI)</option>
               <option value="gemini-pro">Gemini (Google)</option>
               <option value="claude-sonnet">Claude (Anthropic)</option>
-              <option value="cohere-plus">Cohere</option></select>
+              <option value="cohere-plus">Cohere</option>
+            </select>
 
             <select id="model-version" class="model-select model-version" aria-label="Version">
               <option value="">Latest</option>
             </select>
 
             <button id="more" class="more" title="More" type="button">+</button>
-            <!-- Hidden input for file picking (stays invisible) -->
             <input id="file-input" type="file" multiple hidden>
 
-            <!-- Plus-menu popover (hidden by default; appears when + is clicked) -->
             <div id="plus-menu" class="plus-menu" hidden>
               <button class="plus-item" id="plus-upload" type="button">
                 <span class="pi-emoji">📎</span>
@@ -125,7 +115,6 @@
             </div>
             <div id="attach-chips" class="attach-chips" hidden></div>
 
-
             <textarea id="input" rows="1" placeholder="Ask anything…"></textarea>
             <button id="send" class="send" title="Send" aria-label="Send">➤</button>
           </div>
@@ -135,34 +124,21 @@
       </section>
     </main>
   </div>
-  <!-- GAIA modal root (centered, themed) -->
+  
   <div id="gaia-modal" class="gaia-modal-backdrop" role="dialog" aria-modal="true">
-  <div class="gaia-modal-panel" role="document">
-    <button class="gaia-modal-close" data-close aria-label="Close">✕</button>
-    <div class="gaia-modal-head" id="gaia-modal-title">Title</div>
-    <div class="gaia-modal-body" id="gaia-modal-body"></div>
-    <div class="gaia-modal-foot">
-      <button class="btn cancel" data-close>Cancel</button>
-      <button class="btn ok" id="gaia-modal-ok">OK</button>
+    <div class="gaia-modal-panel" role="document">
+      <button class="gaia-modal-close" data-close aria-label="Close">✕</button>
+      <div class="gaia-modal-head" id="gaia-modal-title">Title</div>
+      <div class="gaia-modal-body" id="gaia-modal-body"></div>
+      <div class="gaia-modal-foot">
+        <button class="btn cancel" data-close>Cancel</button>
+        <button class="btn ok" id="gaia-modal-ok">OK</button>
+      </div>
     </div>
   </div>
-  </div>
-  <!-- Mobile dim background when side panels are open -->
+  
   <div id="mobile-overlay"></div>
-  <script>
-    // Injected config placeholders (set these via env->template if you want later)
-    window.GAIA_FIREBASE_CONFIG = {
-        apiKey: "AIzaSyCD47WrN4xlS-rHkwkJrpOg8inQ0vcU3OE",
-        authDomain: "aira-477913-d02c6.firebaseapp.com",
-        projectId: "aira-477913-d02c6",
-        storageBucket: "aira-477913-d02c6.firebasestorage.app",
-        messagingSenderId: "6871258176",
-        appId: "1:6871258176:web:77a62de1a301d3d5703ba5",
-        measurementId: "G-214W38FDTB"
-    };
-  </script>
 
-  <!-- Auth modal content template (JS will place it inside your gaia-modal) -->
   <template id="auth-modal-template">
     <div class="auth-tabs">
       <button class="auth-tab is-active" data-tab="email">Email</button>
@@ -196,12 +172,11 @@
     </div>
   </template>
 
-  
   <script src="/static/scripts/spaces.js" defer></script>
   <script type="module">
-  import { hydrateModelSelect } from "/static/scripts/models.js";
-  const sel = document.querySelector("#model"); /* your existing select */
-  hydrateModelSelect(sel);
+    import { hydrateModelSelect } from "/static/scripts/models.js";
+    const sel = document.querySelector("#model"); 
+    hydrateModelSelect(sel);
   </script>
   <script src="/static/scripts/attachment_vault.js" defer></script>
   <script src="/static/scripts/markdown_plus.js" defer></script>
@@ -211,32 +186,24 @@
   <script src="/static/scripts/memory.js"></script>
   <script src="/static/scripts/aimemory.js" defer></script>
   <script src="/static/scripts/elm.js" defer></script>
-  <script src="/static/scripts/codeflow.js" defer></script> <!-- next section -->
+  <script src="/static/scripts/codeflow.js" defer></script>
   <script src="/static/scripts/filemem.js" defer></script>
+
+  <script>
+    window.GAIA_FIREBASE_CONFIG = {
+        apiKey: "AIzaSyCD47WrN4xlS-rHkwkJrpOg8inQ0vcU3OE",
+        authDomain: "aira-477913-d02c6.firebaseapp.com",
+        projectId: "aira-477913-d02c6",
+        storageBucket: "aira-477913-d02c6.firebasestorage.app",
+        messagingSenderId: "6871258176",
+        appId: "1:6871258176:web:77a62de1a301d3d5703ba5",
+        measurementId: "G-214W38FDTB"
+    };
+  </script>
 
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-app.js";
     import {
       getAuth,
       onAuthStateChanged,
-      signInWithEmailAndPassword,
-      createUserWithEmailAndPassword,
-      GoogleAuthProvider,
-      signInWithPopup,
-      signOut
-    } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-auth.js";
-
-    window.__GAIA_FB = {
-      initializeApp,
-      getAuth,
-      onAuthStateChanged,
-      signInWithEmailAndPassword,
-      createUserWithEmailAndPassword,
-      GoogleAuthProvider,
-      signInWithPopup,
-      signOut
-    };
-  </script>
-  <script src="/static/app.js" defer></script>
-</body>
-</html><!-- Vault File Viewer (hidden by default) -->
+      signInWithEmailAndPassword
